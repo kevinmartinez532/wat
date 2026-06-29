@@ -570,19 +570,41 @@ async def vouch(interaction: discord.Interaction, user: discord.Member):
 
 @tree.command(
     name="vouch_add",
-    description="Add a vouch to a user (staff only)"
+    description="Add vouches to a user (staff only)"
 )
 @app_commands.checks.has_role(TRAINING_ROLE_ID)
-async def vouch_add(interaction: discord.Interaction, user: discord.Member):
+async def vouch_add(
+    interaction: discord.Interaction,
+    user: discord.Member,
+    amount: int
+):
 
-    add_vouch(user.id)
+    if amount <= 0:
+        await interaction.response.send_message(
+            embed=red_embed(
+                "Invalid Amount",
+                "You must add at least 1 vouch."
+            ),
+            ephemeral=True
+        )
+        return
 
-    count = get_vouches(user.id)
+    data = load_database()
+    uid = str(user.id)
+
+    if uid not in data:
+        data[uid] = 0
+
+    data[uid] += amount
+    save_database(data)
+
+    count = data[uid]
 
     await interaction.response.send_message(
         embed=success_embed(
-            "Vouch Added",
-            f"{user.mention} now has **{count} vouches**."
+            "Vouches Added",
+            f"{user.mention} received **+{amount} vouches**\n"
+            f"Total now: **{count}**"
         ),
         ephemeral=True
     )
@@ -598,14 +620,25 @@ async def vouchcount(interaction: discord.Interaction, user: discord.Member):
 
     embed = discord.Embed(
         title="📊 Vouch Count",
-        description=f"**User:** {user.mention}\n**Total Vouches:** `{count}`",
         color=discord.Color.blurple(),
         timestamp=datetime.utcnow()
     )
 
+    embed.add_field(
+        name="User",
+        value=user.mention,
+        inline=True
+    )
+
+    embed.add_field(
+        name="Total Vouches",
+        value=f"**{count}**",
+        inline=True
+    )
+
     embed.set_footer(text="Vouch System")
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.response.send_message(embed=embed)
     # ===========================================
 # AUTO VOUCH SYSTEM
 # ===========================================
