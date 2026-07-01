@@ -1137,11 +1137,29 @@ async def on_ready():
 
     print(f"Logged in as {bot.user}")
 
+    guild_id = os.getenv("GUILD_ID")
+
     try:
-        await tree.sync()
-        print("Slash commands synced")
+
+        if guild_id:
+
+            guild = discord.Object(id=int(guild_id))
+
+            tree.copy_global_to(guild=guild)
+
+            synced = await tree.sync(guild=guild)
+
+            print(f"Slash commands synced instantly to guild {guild_id} ({len(synced)} commands)")
+
+        else:
+
+            synced = await tree.sync()
+
+            print(f"Slash commands synced globally ({len(synced)} commands)")
+
     except Exception as e:
-        print(e)
+
+        print(f"SYNC FAILED: {e}")
 
     if not auto_vouch_task.is_running():
         auto_vouch_task.start()
