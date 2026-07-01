@@ -855,6 +855,12 @@ async def flop(
         )
 
         embed.add_field(
+            name="🧑‍⚖️ Middleman",
+            value=interaction.user.mention,
+            inline=False
+        )
+
+        embed.add_field(
             name="✂️ Split",
             value=split,
             inline=False
@@ -978,7 +984,7 @@ async def floplb(interaction: discord.Interaction, period: app_commands.Choice[s
 
 @tree.command(
     name="viewflops",
-    description="Shows a user's flop history for a period"
+    description="Shows how many flops a user has logged against them for a period"
 )
 @app_commands.describe(user="The user to look up", period="Time period")
 @app_commands.choices(period=PERIOD_CHOICES)
@@ -990,61 +996,20 @@ async def viewflops(interaction: discord.Interaction, user: discord.Member, peri
 
     filtered = filter_flops_by_period(user_flops, period.value)
 
-    filtered.sort(key=lambda f: f["timestamp"], reverse=True)
+    count = len(filtered)
 
-    if not filtered:
+    embed = discord.Embed(
+        title=f"🚩 Flop History — {user.display_name}",
+        description=f"{user.mention} has **{count}** flop{'' if count == 1 else 's'} logged ({PERIOD_LABELS[period.value]}).",
+        color=discord.Color.red(),
+        timestamp=datetime.utcnow()
+    )
 
-        embed = discord.Embed(
-            title=f"🚩 Flop History — {user.display_name}",
-            description=f"No flops logged for this user ({PERIOD_LABELS[period.value]}).",
-            color=discord.Color.red()
-        )
+    embed.set_thumbnail(url=user.display_avatar.url)
 
-        embed.set_footer(text="Grow A Garden 2 | MM Services")
+    embed.set_footer(text="Grow A Garden 2 | MM Services")
 
-        await interaction.response.send_message(embed=embed)
-        return
-
-    per_page = 5
-
-    total_pages = math.ceil(len(filtered) / per_page)
-
-    embeds = []
-
-    for page in range(total_pages):
-
-        chunk = filtered[page * per_page: page * per_page + per_page]
-
-        embed = discord.Embed(
-            title=f"🚩 Flop History — {user.display_name}",
-            description=f"**{len(filtered)}** flop(s) logged ({PERIOD_LABELS[period.value]})",
-            color=discord.Color.red()
-        )
-
-        for entry in chunk:
-
-            ts = int(entry["timestamp"])
-
-            embed.add_field(
-                name=f"<t:{ts}:f>",
-                value=(
-                    f"✂️ Split: {entry['split']}\n"
-                    f"📝 Notes: {entry['notes']}\n"
-                    f"👮 Logged by: <@{entry['logged_by_id']}>"
-                ),
-                inline=False
-            )
-
-        embed.set_footer(text=f"Grow A Garden 2 | MM Services • Page {page + 1}/{total_pages}")
-
-        embeds.append(embed)
-
-    view = PaginatedView(embeds, interaction.user.id) if total_pages > 1 else None
-
-    await interaction.response.send_message(embed=embeds[0], view=view)
-
-    if view:
-        view.message = await interaction.original_response()
+    await interaction.response.send_message(embed=embed)
 
 # ===========================================
 # AUTO VOUCH SYSTEM
@@ -1139,9 +1104,19 @@ async def on_ready():
 
     guild_id = os.getenv("GUILD_ID")
 
+    clear_global = os.getenv("CLEAR_GLOBAL")
+
     try:
 
-        if guild_id:
+        if clear_global:
+
+            tree.clear_commands(guild=None)
+
+            await tree.sync()
+
+            print("Cleared all GLOBAL commands. Remove CLEAR_GLOBAL variable now and redeploy.")
+
+        elif guild_id:
 
             guild = discord.Object(id=int(guild_id))
 
